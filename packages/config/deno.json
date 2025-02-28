@@ -1,0 +1,7 @@
+{
+  "name": "@scope/config",
+  "tasks": {
+    "test": "deno test --allow-env"
+  },
+  "exports": "./main.ts"
+} 

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebAuthn Test</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <script src="js/webauthn.js" defer></script>
+    <style>
+        .container {
+            margin: 20px;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" placeholder="Enter username">
+        </div>
+        <div class="button-group">
+            <button onclick="register()">Register</button>
+            <button onclick="login()">Login</button>
+        </div>
+    </div>
+</body>
+</html> 

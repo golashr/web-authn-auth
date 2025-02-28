@@ -1,0 +1,16 @@
+{
+  "tasks": {
+    "dev": "deno run --env-file -A --watch packages/server/src/server.ts",
+    "compile:server": "deno compile --env-file -A packages/server/src/server.ts",
+    "compile:client": "deno compile --env-file -A packages/client/src/server.ts",
+    "compile": "deno task compile:server && deno task compile:client"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "@simplewebauthn/server": "npm:@simplewebauthn/server@8.3.5",
+    "@redis/client": "npm:@redis/client",
+    "@scope/config": "./packages/config/src/index.ts",
+    "@scope/api": "./packages/api/src/services/index.ts",
+    "@scope/server": "./packages/server/src/main.ts"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@scope/server",
+  "tasks": {
+    "dev": "deno run --allow-env --allow-net --watch server/src/server.ts"
+  },
+  "imports": {
+    "@std/": "jsr:@std/",
+    "@simplewebauthn/server": "npm:@simplewebauthn/server@8.3.5",
+    "@redis/client": "npm:@redis/client@5.0.0",
+    "@scope/config": "../config/main.ts"
+  },
+  "exports": "./main.ts"
+} 
