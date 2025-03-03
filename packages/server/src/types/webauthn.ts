@@ -1,39 +1,56 @@
 import type {
-  AuthenticatorTransport,
-  RegistrationResponseJSON,
-  AuthenticationResponseJSON,
-  PublicKeyCredentialRequestOptionsJSON,
-} from "npm:@simplewebauthn/typescript-types@8.3.4";
-
-import type {
-  GenerateRegistrationOptionsOpts,
-  GenerateAuthenticationOptionsOpts,
+  AuthenticatorTransportFuture,
+  CredentialDeviceType,
+  Base64URLString,
 } from "@simplewebauthn/server";
 
-export interface AuthenticatorDevice {
-  credentialID: string;
-  credentialPublicKey: string;
-  counter: number;
-  credentialDeviceType: string;
-  credentialBackedUp: boolean;
-  createdAt: Date;
-  lastUsed: Date;
-  nickname?: string;
-  transports?: AuthenticatorTransport[];
-}
-
-export interface User {
+// Basic user model
+export interface UserModel {
   id: string;
   userName: string;
-  devices: AuthenticatorDevice[];
-  currentChallenge?: string;
-} 
+}
 
-// Re-export the types we need
+// Passkey (authenticator device) model
+export interface Passkey {
+  // Unique identifier for this credential
+  id: Base64URLString;
+  
+  // The public key in CBOR format, encoded as Base64URLString
+  publicKey: Base64URLString;
+  
+  // Reference to the user this passkey belongs to
+  // user: UserModel;
+  
+  // WebAuthn user ID (different from our internal user ID)
+  // webauthnUserID: Base64URLString;
+  
+  // Anti-replay counter
+  counter: number;
+  
+  // Whether this is a single-device or multi-device credential
+  deviceType: CredentialDeviceType;
+  
+  // Whether the credential is backed up
+  backedUp: boolean;
+  
+  // How the authenticator can communicate with the browser
+  transports?: AuthenticatorTransportFuture[];
+  
+  // Additional metadata
+  createdAt: Date;
+  lastUsed: Date;
+  // nickname?: string;
+}
+
+// User model with their passkeys
+export interface User extends UserModel {
+  userPasskeys: Passkey[];
+  currentChallenge?: string;
+}
+
+// Re-export types we need from SimpleWebAuthn
 export type {
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
-  GenerateRegistrationOptionsOpts,
-  GenerateAuthenticationOptionsOpts,
   PublicKeyCredentialRequestOptionsJSON,
-};
+} from "@simplewebauthn/types";

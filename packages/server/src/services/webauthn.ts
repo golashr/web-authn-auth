@@ -1,21 +1,24 @@
-import { decodeBase64, encodeBase64 } from "jsr:@std/encoding/base64";
+import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
-  type GenerateRegistrationOptionsOpts,
 } from "@simplewebauthn/server";
 import type { 
-  User, 
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
   PublicKeyCredentialRequestOptionsJSON,
+  GenerateRegistrationOptionsOpts,
+  VerifiedRegistrationResponse,
+} from "@simplewebauthn/server";
+import type { 
+  User, 
 } from "../types/webauthn.ts";
 import { config } from "@scope/config";
 import { RedisService } from "./redis.ts";
 
-function toBase64URLString(buffer: Uint8Array): string {
+function toBase64URLFromUInt8Array(buffer: Uint8Array): string {
   return encodeBase64(buffer)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -27,12 +30,21 @@ function toBase64URLString(buffer: Uint8Array): string {
 // Length 6 % 4 = 2, needs 2 padding chars
 // Length 7 % 4 = 3, needs 1 padding char
 // Length 8 % 4 = 0, needs 0 padding chars //the final % 4 is used for this case
-function fromBase64URLString(base64url: string): Uint8Array {
+function fromBase64URLStringToUInt8Array(base64url: string): Uint8Array {
   const base64 = base64url
     .replace(/-/g, '+')
     .replace(/_/g, '/')
     .padEnd(base64url.length + ((4 - (base64url.length % 4)) % 4), '='); 
   return decodeBase64(base64);
+}
+
+function uuidToUint8Array(uuid: string): Uint8Array {
+  // Remove hyphens and convert to buffer
+  return new Uint8Array(
+    uuid.replace(/-/g, '')
+      .match(/.{1,2}/g)!
+      .map(byte => parseInt(byte, 16))
+  );
 }
 
 export class WebAuthnService {
@@ -50,7 +62,8 @@ export class WebAuthnService {
 
   static async generateRegistrationOptions(userName: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
     const redis = await this.getRedis();
-    const userId = crypto.randomUUID();
+    const userUUID = crypto.randomUUID();  // Keep original UUID
+    const userID = uuidToUint8Array(userUUID);  // Convert for WebAuthn
     
     // Check if user already exists
     const existingUser = await redis.getUser(userName);
@@ -58,13 +71,13 @@ export class WebAuthnService {
     const optionsParameters = {
       rpName: this.rpName,
       rpID: this.rpID,
-      userID: userId,
+      userID,  // Use Uint8Array for WebAuthn
       userName,
       attestationType: 'none',
-      excludeCredentials: existingUser?.devices.map(device => ({
-        id: fromBase64URLString(device.credentialID),
+      excludeCredentials: existingUser?.userPasskeys.map(passKey => ({
+        id: passKey.id, 
         type: 'public-key',
-        transports: device.transports,
+        transports: passKey.transports,
       })),
       authenticatorSelection: {
         residentKey: 'preferred',
@@ -75,9 +88,9 @@ export class WebAuthnService {
     
     const options = await generateRegistrationOptions(optionsParameters as GenerateRegistrationOptionsOpts);
     const user: User = existingUser ?? {
-      id: userId,
+      id: userUUID,  // Store original UUID
       userName,
-      devices: [],
+      userPasskeys: [],
       currentChallenge: options.challenge,
     };
     
@@ -100,7 +113,7 @@ export class WebAuthnService {
     }
 
     try {
-      const verification = await verifyRegistrationResponse({
+      const verification: VerifiedRegistrationResponse = await verifyRegistrationResponse({
         response,
         expectedChallenge: user.currentChallenge,
         expectedOrigin: this.origin,
@@ -110,26 +123,30 @@ export class WebAuthnService {
       console.log(JSON.stringify(verification, null, 2));
 
       if (verification.verified && verification.registrationInfo) {
-        const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+        const {
+          credential,
+          credentialDeviceType,
+          credentialBackedUp,
+        } = verification.registrationInfo;
+        const { id, publicKey, counter } = credential;
 
-        const existingDevice = user.devices.find(
-          device => device.credentialID === toBase64URLString(credentialID)
+        const existingpassKey = user.userPasskeys.find(
+          passKey => passKey.id === id
         );
 
-        if (!existingDevice) {
-          const newDevice = {
-            credentialID: toBase64URLString(credentialID),
-            credentialPublicKey: toBase64URLString(credentialPublicKey),
+        if (!existingpassKey) {
+          const newpassKey = {
+            id,
+            publicKey: toBase64URLFromUInt8Array(publicKey),
             counter,
-            credentialDeviceType: verification.registrationInfo.credentialDeviceType,
-            credentialBackedUp: verification.registrationInfo.credentialBackedUp,
+            deviceType: credentialDeviceType,
+            backedUp: credentialBackedUp,
+            transports: response.response.transports || ['internal'],
             createdAt: new Date(),
             lastUsed: new Date(),
-            nickname: userName,
-            transports: response.response.transports || ['internal'],
           };
 
-          user.devices.push(newDevice); 
+          user.userPasskeys.push(newpassKey);
           await redis.setUser(userName, user);
         }
       }
@@ -150,10 +167,10 @@ export class WebAuthnService {
 
     const options = await generateAuthenticationOptions({
       rpID: this.rpID,
-      allowCredentials: user.devices.map(device => ({
-        id: fromBase64URLString(device.credentialID),
+      allowCredentials: user.userPasskeys.map(passKey => ({
+        id: passKey.id,
         type: 'public-key',
-        transports: device.transports,
+        transports: passKey.transports,
       })),
       userVerification: 'preferred',
     });
@@ -174,9 +191,9 @@ export class WebAuthnService {
     }
     
     console.log(JSON.stringify(response, null, 2));
-    const device = user.devices.find(device => device.credentialID === response.id);
+    const passKey = user.userPasskeys.find(passKey => passKey.id === response.id);
 
-    if (!device) {
+    if (!passKey) {
       throw new Error('Authenticator is not registered with this site');
     }
 
@@ -186,15 +203,17 @@ export class WebAuthnService {
         expectedChallenge: user.currentChallenge,
         expectedOrigin: this.origin,
         expectedRPID: this.rpID,
-        authenticator: {
-          credentialID: fromBase64URLString(device.credentialID),
-          credentialPublicKey: fromBase64URLString(device.credentialPublicKey),
-          counter: device.counter,
+        credential: { 
+          id: passKey.id,
+          publicKey: fromBase64URLStringToUInt8Array(passKey.publicKey),
+          counter: passKey.counter,
+          transports: passKey.transports,
         },
       });
 
       if (verification.verified) {
-        device.counter = verification.authenticationInfo.newCounter;
+        passKey.counter = verification.authenticationInfo.newCounter;
+        passKey.lastUsed = new Date();
         await redis.setUser(userName, user);
       }
 

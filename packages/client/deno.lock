@@ -1,6 +1,8 @@
 {
   "version": "4",
   "remote": {
+    "https://cdn.skypack.dev/-/@simplewebauthn/browser@v13.1.0-Kuxk7VKD6xxNBsqCQlYN/dist=es2019,mode=imports/optimized/@simplewebauthn/browser.js": "312822f144697d7ee1f33a797db105491aab675ef1e8221294e9257215cdba61",
+    "https://cdn.skypack.dev/@simplewebauthn/browser": "cd8f80239bed4a1d648703de2dc2fe09701a5147a27ea97914dbc03adb7b05a2",
     "https://deno.land/std@0.200.0/_util/os.ts": "d932f56d41e4f6a6093d56044e29ce637f8dcc43c5a90af43504a889cf1775e3",
     "https://deno.land/std@0.200.0/assert/assert.ts": "9a97dad6d98c238938e7540736b826440ad8c1c1e54430ca4c4e623e585607ee",
     "https://deno.land/std@0.200.0/assert/assertion_error.ts": "4d0bde9b374dfbcbe8ac23f54f567b77024fb67dbb1906a852d67fe050d42f56",

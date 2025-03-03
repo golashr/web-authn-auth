@@ -6,9 +6,10 @@
     "compile": "deno task compile:server && deno task compile:client"
   },
   "imports": {
+    "@redis/client": "npm:@redis/client@1.5.14",
     "@std/assert": "jsr:@std/assert@1",
-    "@simplewebauthn/server": "npm:@simplewebauthn/server@8.3.5",
-    "@redis/client": "npm:@redis/client",
+    "@simplewebauthn/server": "jsr:@simplewebauthn/server",
+    "@simplewebauthn/types": "jsr:@simplewebauthn/types",
     "@scope/config": "./packages/config/src/index.ts",
     "@scope/api": "./packages/api/src/services/index.ts",
     "@scope/server": "./packages/server/src/main.ts"
