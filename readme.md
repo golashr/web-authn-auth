@@ -1,6 +1,7 @@
 # WebAuthn Demo with Passkeys
 
-A demonstration of passwordless authentication using WebAuthn and passkeys.
+A demonstration of passwordless authentication using WebAuthn FIDO2 implementation with SimpleWebAuthn and passkeys. 
+* FIDO2/WebAuthn is designed for the web
 
 ## Features
 
@@ -112,3 +113,9 @@ This proof of concept implements both client and server components:
   - @simplewebauthn/server
 - Redis
 - TypeScript
+
+
+What Can You Achieve with SimpleWebAuthn?
+✅ FIDO2/WebAuthn support – Implement passwordless logins using biometrics, security keys, or device-bound credentials.
+✅ Multi-device authentication – Use FIDO2 security keys (YubiKey), mobile biometrics (Face ID, Windows Hello), or built-in authenticators.
+✅ Phishing-resistant MFA – No OTPs, no password reuse issues.

@@ -71,7 +71,7 @@ export class WebAuthnService {
     const optionsParameters = {
       rpName: this.rpName,
       rpID: this.rpID,
-      userID,  // Use Uint8Array for WebAuthn
+      userID,
       userName,
       attestationType: 'none',
       excludeCredentials: existingUser?.userPasskeys.map(passKey => ({
@@ -81,9 +81,14 @@ export class WebAuthnService {
       })),
       authenticatorSelection: {
         residentKey: 'preferred',
+        requireResidentKey: false,
         userVerification: 'preferred',
         authenticatorAttachment: 'platform',
       },
+      extensions: {
+        credProps: true,
+        uvm: true
+      }
     }
     
     const options = await generateRegistrationOptions(optionsParameters as GenerateRegistrationOptionsOpts);

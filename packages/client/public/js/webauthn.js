@@ -1,26 +1,29 @@
 import { startRegistration, startAuthentication } from 'https://cdn.skypack.dev/@simplewebauthn/browser';
 
-// Base64URL encoding/decoding functions
-// function bufferToBase64URL(buffer) {
-//     const bytes = new Uint8Array(buffer);
-//     let str = '';
-//     for (const charCode of bytes) {
-//         str += String.fromCharCode(charCode);
+// Check for existing passkeys on page load
+// async function checkExistingPasskeys() {
+//     try {
+//         const mediation = await PublicKeyCredential.isConditionalMediationAvailable();
+//         if (mediation) {
+//             // Start listening for auto-fill
+//             const credential = await navigator.credentials.get({
+//                 mediation: 'conditional',
+//                 publicKey: {
+//                     challenge: new Uint8Array(32),
+//                     rpId: window.location.hostname,
+//                     userVerification: 'preferred',
+//                 }
+//             });
+            
+//             if (credential) {
+//                 // Auto-fill username and trigger login
+//                 document.getElementById('username').value = credential.response.userHandle;
+//                 login();
+//             }
+//         }
+//     } catch (error) {
+//         console.log('No passkeys available for auto-fill');
 //     }
-//     const base64 = btoa(str);
-//     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-// }
-
-// function base64URLToBuffer(base64URL) {
-//     const base64 = base64URL.replace(/-/g, '+').replace(/_/g, '/');
-//     const padLength = (4 - (base64.length % 4)) % 4;
-//     const padded = base64.padEnd(base64.length + padLength, '=');
-//     const binary = atob(padded);
-//     const buffer = new Uint8Array(binary.length);
-//     for (let i = 0; i < binary.length; i++) {
-//         buffer[i] = binary.charCodeAt(i);
-//     }
-//     return buffer;
 // }
 
 async function register() {
@@ -30,6 +33,24 @@ async function register() {
             alert('Please enter a username');
             return;
         }
+
+        // Check for existing passkeys first
+        // try {
+        //     const credential = await navigator.credentials.get({
+        //         publicKey: {
+        //             challenge: new Uint8Array(32),
+        //             rpId: window.location.hostname,
+        //             userVerification: 'preferred',
+        //         }
+        //     });
+            
+        //     if (credential) {
+        //         alert('You already have a passkey for this site. Please use login.');
+        //         return;
+        //     }
+        // } catch (e) {
+        //     // No existing passkeys, continue with registration
+        // }
 
         const serverOrigin = 'http://localhost:3126';
         
@@ -108,4 +129,11 @@ async function login() {
         console.error('Login failed:', error);
         alert('Login failed: ' + error.message);
     }
-} 
+}
+
+// Start listening for passkeys when page loads
+// document.addEventListener('DOMContentLoaded', checkExistingPasskeys);
+
+// Add event listeners for buttons
+document.getElementById('registerBtn').addEventListener('click', register);
+document.getElementById('loginBtn').addEventListener('click', login);
