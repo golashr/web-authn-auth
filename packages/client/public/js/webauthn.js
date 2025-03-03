@@ -65,7 +65,7 @@ async function register() {
         console.log('Registration options:', options);
 
         // 2. Create credentials using simplewebauthn/browser
-        const registrationResponse = await startRegistration(options.data);
+        const registrationResponse = await startRegistration({ optionsJSON: options.data });
 
         // 3. Verify registration
         const verifyRes = await fetch(`${serverOrigin}/auth/register-verify`, {
@@ -78,6 +78,11 @@ async function register() {
         });
 
         const verifyResult = await verifyRes.json();
+        if (verifyResult.success) {
+            alert('Registration successful!');
+        } else {
+            alert('Registration failed!');
+        }
         console.log('Registration result:', verifyResult);
     } catch (error) {
         console.error('Registration failed:', error);
@@ -105,7 +110,7 @@ async function login() {
         console.log('Login options:', options);
 
         // 2. Get credentials using simplewebauthn/browser
-        const authenticationResponse = await startAuthentication(options.data);
+        const authenticationResponse = await startAuthentication({ optionsJSON: options.data });
 
         // 3. Verify authentication
         const verifyRes = await fetch(`${serverOrigin}/auth/login-verify`, {
