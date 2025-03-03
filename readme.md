@@ -116,6 +116,7 @@ This proof of concept implements both client and server components:
 
 
 What Can You Achieve with SimpleWebAuthn?
-✅ FIDO2/WebAuthn support – Implement passwordless logins using biometrics, security keys, or device-bound credentials.
-✅ Multi-device authentication – Use FIDO2 security keys (YubiKey), mobile biometrics (Face ID, Windows Hello), or built-in authenticators.
-✅ Phishing-resistant MFA – No OTPs, no password reuse issues.
+
+- ✅ FIDO2/WebAuthn support – Implement passwordless logins using biometrics, security keys, or device-bound credentials.
+- ✅ Multi-device authentication – Use FIDO2 security keys (YubiKey), mobile biometrics (Face ID, Windows Hello), or built-in authenticators.
+- ✅ Phishing-resistant MFA – No OTPs, no password reuse issues.
