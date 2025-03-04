@@ -171,18 +171,25 @@ export class WebAuthnService {
     }
 
     const options = await generateAuthenticationOptions({
-      rpID: this.rpID,
-      allowCredentials: user.userPasskeys.map(passKey => ({
-        id: passKey.id,
-        type: 'public-key',
-        transports: passKey.transports,
-      })),
-      userVerification: 'preferred',
+        rpID: this.rpID,
+        allowCredentials: user.userPasskeys.map(passKey => ({
+          id: passKey.id,
+          type: 'public-key',
+          transports: passKey.transports,
+        })),
+        userVerification: 'preferred',
     });
 
     user.currentChallenge = options.challenge;
     await redis.setUser(userName, user);
-    return options;
+
+    // Return only necessary options, omitting allowCredentials
+    return {
+        challenge: options.challenge,
+        timeout: options.timeout,
+        rpId: options.rpId,
+        userVerification: options.userVerification
+    };
   }
 
   static async verifyAuthentication(
