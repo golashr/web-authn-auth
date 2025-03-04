@@ -37,13 +37,11 @@ WebAuthn flows:
 ### Auto-fill Client (`/packages/client-auto-fill`)
 
 - Automatic username discovery from passkey
-- More convenient but requires double verification
+- More convenient user experience
 - Flow:
-  1. Initial passkey selection prompt (first verification)
+  1. Initial passkey selection prompt
   2. Username auto-filled from selected passkey
-  3. Server generates fresh challenge
-  4. Second passkey verification prompt
-  5. Server verifies authentication
+  3. Server verifies authentication
 
 #### Trade-offs
 
@@ -57,17 +55,8 @@ WebAuthn flows:
 
 - ✅ Automatic username discovery
 - ✅ More convenient user experience
-- ❌ Requires double passkey verification
-- ❌ Additional API call for username lookup
-
-The double verification in the auto-fill client is due to WebAuthn's security
-model:
-
-1. First verification: To securely get username from passkey
-2. Second verification: To authenticate with server's fresh challenge
-
-Choose the appropriate implementation based on your UX vs. verification
-frequency preferences.
+- ✅ Single verification flow
+- ✅ Streamlined API calls
 
 ### Server Implementation
 
@@ -129,12 +118,11 @@ frequency preferences.
 │ │ │ │ └── redis.ts # Redis storage
 │ │ │ ├── routes/
 │ │ │ │ ├── auth/
-│ │ │ │ │ ├── register-options.ts
-│ │ │ │ │ ├── register-verify.ts
-│ │ │ │ │ ├── login-options.ts
+│ │ │ │ │ ├── generate-challenge.ts
+│ │ │ │ │ ├── index.ts
 │ │ │ │ │ ├── login-verify.ts
-│ │ │ │ │ └── get-username.ts
-│ │ │ │ └── index.ts
+│ │ │ │ │ └── register-options.ts
+│ │ │ │ │ ├── register-verify.ts
 │ │ │ ├── middleware/
 │ │ │ │ └── cors.ts
 │ │ │ └── server.ts
@@ -214,7 +202,7 @@ RP_NAME="WebAuthn Demo"
 
 4. Access the demo:
    - Open http://localhost:3126
-   - Enter username
+   - Enter username to register
    - Follow browser prompts for biometric registration/authentication
 
 ## Technologies
