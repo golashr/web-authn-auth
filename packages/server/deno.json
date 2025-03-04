@@ -10,4 +10,4 @@
     "@scope/config": "../config/main.ts"
   },
   "exports": "./main.ts"
-} 
+}

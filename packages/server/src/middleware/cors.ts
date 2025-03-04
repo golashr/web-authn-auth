@@ -7,8 +7,14 @@ export async function cors(ctx: Context, next: () => Promise<unknown>) {
   // Set CORS headers
   ctx.response.headers.set("Access-Control-Allow-Origin", origin);
   ctx.response.headers.set("Access-Control-Allow-Credentials", "true");
-  ctx.response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type, Origin");
+  ctx.response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
+  ctx.response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Origin",
+  );
   ctx.response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
 
   // Handle preflight
@@ -18,4 +24,4 @@ export async function cors(ctx: Context, next: () => Promise<unknown>) {
   }
 
   await next();
-} 
+}

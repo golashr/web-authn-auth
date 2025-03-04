@@ -1,28 +1,26 @@
 import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
 import {
-  generateAuthenticationOptions,
+  // generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
-import type { 
-  RegistrationResponseJSON,
+import type {
   AuthenticationResponseJSON,
-  PublicKeyCredentialRequestOptionsJSON,
   GenerateRegistrationOptionsOpts,
-  VerifiedRegistrationResponse,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
+  // VerifiedRegistrationResponse,
 } from "@simplewebauthn/server";
-import type { 
-  User, 
-} from "../types/webauthn.ts";
+import type { User } from "../types/webauthn.ts";
 import { config } from "@scope/config";
 import { RedisService } from "./redis.ts";
 
 function toBase64URLFromUInt8Array(buffer: Uint8Array): string {
   return encodeBase64(buffer)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 // Example lengths and resulting padding:
@@ -32,18 +30,18 @@ function toBase64URLFromUInt8Array(buffer: Uint8Array): string {
 // Length 8 % 4 = 0, needs 0 padding chars //the final % 4 is used for this case
 function fromBase64URLStringToUInt8Array(base64url: string): Uint8Array {
   const base64 = base64url
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(base64url.length + ((4 - (base64url.length % 4)) % 4), '='); 
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(base64url.length + ((4 - (base64url.length % 4)) % 4), "=");
   return decodeBase64(base64);
 }
 
 function uuidToUint8Array(uuid: string): Uint8Array {
   // Remove hyphens and convert to buffer
   return new Uint8Array(
-    uuid.replace(/-/g, '')
+    uuid.replace(/-/g, "")
       .match(/.{1,2}/g)!
-      .map(byte => parseInt(byte, 16))
+      .map((byte) => parseInt(byte, 16)),
   );
 }
 
@@ -60,162 +58,164 @@ export class WebAuthnService {
     return this.redis;
   }
 
-  static async generateRegistrationOptions(userName: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  static async generateRegistrationOptions(
+    userName: string,
+  ): Promise<PublicKeyCredentialRequestOptionsJSON> {
     const redis = await this.getRedis();
-    const userUUID = crypto.randomUUID();  // Keep original UUID
-    const userID = uuidToUint8Array(userUUID);  // Convert for WebAuthn
-    
-    // Check if user already exists
-    const existingUser = await redis.getUser(userName);
+    const existingUser = await redis.getUserByName(userName);
+    let userID: Uint8Array, userUUID:string;
+    if (!existingUser) {
+      userUUID = crypto.randomUUID();
+      userID = uuidToUint8Array(userUUID);
+    } else {
+      userUUID = existingUser.id;
+      userID = uuidToUint8Array(existingUser.id);
+    }
 
     const optionsParameters = {
       rpName: this.rpName,
       rpID: this.rpID,
       userID,
       userName,
-      attestationType: 'none',
-      excludeCredentials: existingUser?.userPasskeys.map(passKey => ({
-        id: passKey.id, 
-        type: 'public-key',
-        transports: passKey.transports,
-      })),
+      attestationType: "none",
       authenticatorSelection: {
-        residentKey: 'preferred',
+        residentKey: "preferred",
         requireResidentKey: false,
-        userVerification: 'preferred',
-        authenticatorAttachment: 'platform',
+        userVerification: "preferred",
+        authenticatorAttachment: "platform",
       },
       extensions: {
         credProps: true,
-        uvm: true
-      }
-    }
-    
-    const options = await generateRegistrationOptions(optionsParameters as GenerateRegistrationOptionsOpts);
-    const user: User = existingUser ?? {
-      id: userUUID,  // Store original UUID
-      userName,
-      userPasskeys: [],
-      currentChallenge: options.challenge,
+        uvm: true,
+      },
     };
+
+    const options = await generateRegistrationOptions(
+      optionsParameters as GenerateRegistrationOptionsOpts,
+    );
+
+    // Store both challenge and initial user data
+    await redis.setChallengeSignUp(options.challenge, userName);
+
     
-    if (existingUser) {
-      user.currentChallenge = options.challenge;
+    if (!existingUser) {
+      // Store initial user data with temporary ID
+      const initialUser: User = {
+        id: userUUID,
+        userName,
+        userPasskeys: [],
+      };
+      await redis.setUserByName(userName, initialUser);
     }
-    
-    await redis.setUser(userName, user);
+
     return options;
   }
 
   static async verifyRegistration(
+    challenge: string,
     userName: string,
-    response: RegistrationResponseJSON
-  ): Promise<boolean> {
-    const redis = await this.getRedis();
-    const user = await redis.getUser(userName);
-    if (!user || !user.currentChallenge) {
-      throw new Error('User not found or challenge missing');
-    }
-
+    response: RegistrationResponseJSON,
+  ): Promise<{ verified: boolean; userName: string }> {
     try {
-      const verification: VerifiedRegistrationResponse = await verifyRegistrationResponse({
+      const redis = await this.getRedis();
+      const storedUserName = await redis.getChallengeSignUp(challenge);
+      if (!storedUserName) {
+        throw new Error("Challenge expired or invalid");
+      }
+
+      if (storedUserName !== userName) {
+        throw new Error("Username mismatch");
+      }
+
+      const verification = await verifyRegistrationResponse({
         response,
-        expectedChallenge: user.currentChallenge,
+        expectedChallenge: challenge,
         expectedOrigin: this.origin,
         expectedRPID: this.rpID,
       });
 
-      console.log(JSON.stringify(verification, null, 2));
-
       if (verification.verified && verification.registrationInfo) {
-        const {
-          credential,
-          credentialDeviceType,
-          credentialBackedUp,
-        } = verification.registrationInfo;
+        const { credential, credentialDeviceType, credentialBackedUp } =
+          verification.registrationInfo;
         const { id, publicKey, counter } = credential;
 
-        const existingpassKey = user.userPasskeys.find(
-          passKey => passKey.id === id
-        );
-
-        if (!existingpassKey) {
-          const newpassKey = {
-            id,
-            publicKey: toBase64URLFromUInt8Array(publicKey),
-            counter,
-            deviceType: credentialDeviceType,
-            backedUp: credentialBackedUp,
-            transports: response.response.transports || ['internal'],
-            createdAt: new Date(),
-            lastUsed: new Date(),
-          };
-
-          user.userPasskeys.push(newpassKey);
-          await redis.setUser(userName, user);
+        // Get the initial user data
+        const initialUser = await redis.getUserByName(storedUserName);
+        if (!initialUser) {
+          throw new Error("User data not found");
         }
+
+        const passkey = {
+          id,
+          publicKey: toBase64URLFromUInt8Array(publicKey),
+          counter,
+          deviceType: credentialDeviceType,
+          backedUp: credentialBackedUp,
+          transports: response.response.transports || ["internal"],
+          createdAt: new Date(),
+          lastUsed: new Date(),
+        }
+        // Update user with passkey data
+        const user: User = {
+          ...initialUser,
+          userPasskeys: [...initialUser.userPasskeys, passkey],
+        };
+
+        // Store updated user with passkey ID
+        await redis.setUserByName(userName, user);
       }
 
-      return verification.verified;
+      return { verified: verification.verified, userName };
     } catch (error) {
       console.error(error);
-      return false;
+      return { verified: false, userName: "" };
     }
   }
 
-  static async generateAuthenticationOptions(userName: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  static async generateAuthChallenge(): Promise<
+    { challenge: string; challengeId: string }
+  > {
     const redis = await this.getRedis();
-    const user = await redis.getUser(userName);
-    if (!user) {
-      throw new Error('User not found');
-    }
+    // Generate random challenge
+    const challengeBuffer = new Uint8Array(32);
+    crypto.getRandomValues(challengeBuffer);
 
-    const options = await generateAuthenticationOptions({
-        rpID: this.rpID,
-        allowCredentials: user.userPasskeys.map(passKey => ({
-          id: passKey.id,
-          type: 'public-key',
-          transports: passKey.transports,
-        })),
-        userVerification: 'preferred',
-    });
+    // Convert to base64url format
+    const challenge = toBase64URLFromUInt8Array(challengeBuffer);
 
-    user.currentChallenge = options.challenge;
-    await redis.setUser(userName, user);
+    // Generate UUID for this challenge
+    const challengeId = crypto.randomUUID();
 
-    // Return only necessary options, omitting allowCredentials
-    return {
-        challenge: options.challenge,
-        timeout: options.timeout,
-        rpId: options.rpId,
-        userVerification: options.userVerification
-    };
+    // Store in Redis
+    await redis.setChallengeAuth(challengeId, challenge);
+
+    return { challenge, challengeId };
   }
 
   static async verifyAuthentication(
-    userName: string,
-    response: AuthenticationResponseJSON
-  ): Promise<boolean> {
+    response: AuthenticationResponseJSON,
+    challengeId: string,
+  ): Promise<{ verified: boolean; userName: string }> {
     const redis = await this.getRedis();
-    const user = await redis.getUser(userName);
-    if (!user || !user.currentChallenge) {
-      throw new Error('User not found or challenge missing');
+    const result = await redis.getUserByPasskeyId(response.id);
+    if (!result) {
+      throw new Error("Passkey not registered");
     }
-    
-    console.log(JSON.stringify(response, null, 2));
-    const passKey = user.userPasskeys.find(passKey => passKey.id === response.id);
+    const { user, passKey } = result;
 
-    if (!passKey) {
-      throw new Error('Authenticator is not registered with this site');
+    // Get challenge from Redis using challengeId
+    const expectedChallenge = await redis.getChallengeAuth(challengeId);
+    if (!expectedChallenge) {
+      throw new Error("Challenge expired or invalid");
     }
 
     try {
       const verification = await verifyAuthenticationResponse({
         response,
-        expectedChallenge: user.currentChallenge,
+        expectedChallenge,
         expectedOrigin: this.origin,
         expectedRPID: this.rpID,
-        credential: { 
+        credential: {
           id: passKey.id,
           publicKey: fromBase64URLStringToUInt8Array(passKey.publicKey),
           counter: passKey.counter,
@@ -226,28 +226,59 @@ export class WebAuthnService {
       if (verification.verified) {
         passKey.counter = verification.authenticationInfo.newCounter;
         passKey.lastUsed = new Date();
-        await redis.setUser(userName, user);
+        await redis.setUserByName(user.userName, user);
       }
 
-      return verification.verified;
+      return { verified: verification.verified, userName: user.userName };
     } catch (error) {
       console.error(error);
-      return false;
+      return { verified: false, userName: "" };
     }
   }
 
-  static async getUsernameFromCredentialId(credentialId: string): Promise<string> {
+  static async getUsernameFromCredentialId(
+    credentialId: string,
+  ): Promise<string> {
     const redis = await this.getRedis();
     const users = await redis.getAllUsers();
-    
+
     for (const user of users) {
       const matchingPasskey = user.userPasskeys.find(
-        passkey => passkey.id === credentialId
+        (passkey) => passkey.id === credentialId,
       );
       if (matchingPasskey) {
         return user.userName;
       }
     }
-    throw new Error('No user found for this credential');
+    throw new Error("No user found for this credential");
   }
-} 
+
+  // static async generateAuthenticationOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  //   const redis = await this.getRedis();
+  //   // const user = await redis.getUser(userName);
+  //   // if (!user) {
+  //   //   throw new Error('User not found');
+  //   // }
+
+  //   const options = await generateAuthenticationOptions({
+  //       rpID: this.rpID,
+  //       allowCredentials: user.userPasskeys.map(passKey => ({
+  //         id: passKey.id,
+  //         type: 'public-key',
+  //         transports: passKey.transports,
+  //       })),
+  //       userVerification: 'preferred',
+  //   });
+
+  //   user.currentChallenge = options.challenge;
+  //   await redis.setUser(userName, user);
+
+  //   // Return only necessary options, omitting allowCredentials
+  //   return {
+  //       challenge: options.challenge,
+  //       timeout: options.timeout,
+  //       rpId: options.rpId,
+  //       userVerification: options.userVerification
+  //   };
+  // }
+}

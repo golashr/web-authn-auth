@@ -8,4 +8,4 @@
     "@std/": "jsr:@std/",
     "@scope/config": "../config/src/index.ts"
   }
-} 
+}

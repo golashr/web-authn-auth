@@ -4,4 +4,4 @@
     "test": "deno test --allow-env"
   },
   "exports": "./main.ts"
-} 
+}

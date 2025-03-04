@@ -21,4 +21,4 @@ export interface ItemsResponse {
 
 export interface ErrorResponse {
   message: string;
-} 
+}

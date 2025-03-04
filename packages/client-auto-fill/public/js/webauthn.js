@@ -1,130 +1,130 @@
-import { startRegistration, startAuthentication } from 'https://cdn.skypack.dev/@simplewebauthn/browser';
+import { startRegistration } from "https://cdn.skypack.dev/@simplewebauthn/browser";
 
-const serverOrigin = 'http://localhost:3126';
-
-async function checkExistingPasskeys() {
-    try {
-        const mediation = await PublicKeyCredential.isConditionalMediationAvailable();
-        if (mediation) {
-            // First get passKey from browser
-            const passKey = await navigator.credentials.get({
-                mediation: 'optional',
-                publicKey: {
-                    challenge: new Uint8Array(32),
-                    rpId: window.location.hostname,
-                    allowCredentials: [], // Empty for discoverable passKey
-                    userVerification: 'preferred',
-                }
-            });
-
-            if (passKey) {
-                console.log('PassKey:', JSON.stringify(passKey, null, 2));
-                const passkeyId = passKey.id;
-                
-                const response = await fetch(`${serverOrigin}/auth/get-username`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ passkeyId })
-                });
-                const options = await response.json();
-                document.getElementById("username").value = options.data.username;
-                return options.data.username
-            }
-        }
-    } catch (error) {
-        console.log('No passkeys available or user declined');
-    }
-}
+const serverOrigin = "http://localhost:3126";
 
 async function register() {
-    try {
-        const username = document.getElementById('username').value.trim();
-        if (!username) {
-            alert('Please enter a username');
-            return;
-        }
-
-        // 1. Get registration options from server
-        const optionsRes = await fetch(`${serverOrigin}/auth/register-options`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ username })
-        });
-        const options = await optionsRes.json();
-
-        console.log('Registration options:', options);
-
-        // 2. Create credentials using simplewebauthn/browser
-        const registrationResponse = await startRegistration({ optionsJSON: options.data });
-
-        // 3. Verify registration
-        const verifyRes = await fetch(`${serverOrigin}/auth/register-verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                username,
-                response: registrationResponse
-            })
-        });
-
-        const verifyResult = await verifyRes.json();
-        if (verifyResult.success) {
-            alert('Registration successful!');
-        } else {
-            alert('Registration failed!');
-        }
-        console.log('Registration result:', verifyResult);
-    } catch (error) {
-        console.error('Registration failed:', error);
+  try {
+    const username = document.getElementById("username").value.trim();
+    if (!username) {
+      alert("Please enter a username");
+      return;
     }
+
+    // 1. Get registration options from server
+    const optionsRes = await fetch(`${serverOrigin}/auth/register-options`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ username }),
+    });
+    const options = await optionsRes.json();
+
+    // 2. Create credentials using simplewebauthn/browser
+    const registrationResponse = await startRegistration({
+      optionsJSON: options.data,
+    });
+
+    // 3. Verify registration
+    const verifyRes = await fetch(`${serverOrigin}/auth/register-verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        username,
+        challenge: options.data.challenge,
+        response: registrationResponse,
+      }),
+    });
+
+    const verifyResult = await verifyRes.json();
+    if (verifyResult.success && verifyResult.data?.verified) {
+      alert(`Registration successful! Welcome onboard ${verifyResult.data.userName}`);
+    } else {
+      alert("Registration failed!");
+    }
+  } catch (error) {
+    console.error("Registration failed:", error);
+  }
 }
 
 async function login() {
-    try {
-        const username = await checkExistingPasskeys()  
-        if (!username) {
-            alert('Please enter a username');
-            return;
-        }
+  try {
+    const mediation = await PublicKeyCredential
+      .isConditionalMediationAvailable();
+    if (mediation) {
+      // First get challenge from server
+      const challengeRes = await fetch(`${serverOrigin}/auth/challenge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const challengeData = await challengeRes.json();
 
-        // Get fresh challenge from server
-        const optionsRes = await fetch(`${serverOrigin}/auth/login-options`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username }),
-            credentials: 'include'
-        });
-        const options = await optionsRes.json();
-        // Regular flow with UI prompt
-        const authenticationResponse = await startAuthentication({ optionsJSON: options.data });
+      // Get passKey using server's challenge
+      const passKey = await navigator.credentials.get({
+        mediation: "optional",
+        publicKey: {
+          // Convert base64url to Uint8Array
+          challenge: base64URLToUint8Array(challengeData.data.challenge),
+          rpId: window.location.hostname,
+          allowCredentials: [], // Empty for discoverable passKey
+          userVerification: "preferred",
+        },
+      });
 
-        // Verify with server
+      if (passKey) {
+        // Verify with server using challengeId
         const verifyRes = await fetch(`${serverOrigin}/auth/login-verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                username,
-                response: authenticationResponse
-            })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            response: passKey,
+            challengeId: challengeData.data.challengeId,
+          }),
         });
 
         const verifyResult = await verifyRes.json();
-        console.log('Login result:', verifyResult);
-        if (verifyResult.success && verifyResult.data.verified) {
-            alert('Login successful!');
+        if (verifyResult.success && verifyResult.data?.verified) {
+          alert(`Login successful! Welcome back ${verifyResult.data.userName}`);
+          return true;
         } else {
-            alert('Login failed!');
+          alert("Login failed");
         }
-    } catch (error) {
-        console.error('Login failed:', error);
-        alert('Login failed: ' + error.message);
+      }
     }
+  } catch (error) {
+    console.error("Login failed:", error);
+    alert("Login failed: " + error.message);
+  }
 }
 
 // Add event listeners for buttons
-document.getElementById('registerBtn').addEventListener('click', register);
-document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById("registerBtn").addEventListener("click", register);
+document.getElementById("loginBtn").addEventListener("click", login);
+
+// Add this helper function at the top of the file
+function base64URLToUint8Array(base64url) {
+  // Convert base64url to base64
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  // Pad with '=' if needed
+  const padded = base64.padEnd(
+    base64.length + ((4 - (base64.length % 4)) % 4),
+    "=",
+  );
+  // Convert to Uint8Array
+  const binary = atob(padded);
+  const array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    array[i] = binary.charCodeAt(i);
+  }
+  return array;
+}
+
+// function fromBase64URLStringToUInt8Array(base64url) {
+//     const base64 = base64url
+//       .replace(/-/g, "+")
+//       .replace(/_/g, "/")
+//       .padEnd(base64url.length + ((4 - (base64url.length % 4)) % 4), "=");
+//     return decodeBase64(base64);
+//   }

@@ -11,14 +11,14 @@ export async function registerOptions(ctx: Context) {
     const options = await WebAuthnService.generateRegistrationOptions(username);
     ctx.response.body = {
       success: true,
-      data: options
+      data: options,
     } as ApiResponse<GenerateRegistrationOptionsOpts>;
   } catch (error) {
     ctx.response.status = 400;
     ctx.response.body = {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      data: null
+      data: null,
     } as ApiResponse<null>;
   }
 }

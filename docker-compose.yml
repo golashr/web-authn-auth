@@ -3,4 +3,4 @@ services:
     image: redis
     container_name: redis-webauthn-dev
     ports:
-      - '7379:6379'
+      - "7379:6379"
