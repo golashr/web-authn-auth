@@ -38,7 +38,9 @@ async function register() {
 
     const verifyResult = await verifyRes.json();
     if (verifyResult.success && verifyResult.data?.verified) {
-      alert(`Registration successful! Welcome onboard ${verifyResult.data.userName}`);
+      alert(
+        `Registration successful! Welcome onboard ${verifyResult.data.userName}`,
+      );
     } else {
       alert("Registration failed!");
     }
@@ -120,11 +122,3 @@ function base64URLToUint8Array(base64url) {
   }
   return array;
 }
-
-// function fromBase64URLStringToUInt8Array(base64url) {
-//     const base64 = base64url
-//       .replace(/-/g, "+")
-//       .replace(/_/g, "/")
-//       .padEnd(base64url.length + ((4 - (base64url.length % 4)) % 4), "=");
-//     return decodeBase64(base64);
-//   }

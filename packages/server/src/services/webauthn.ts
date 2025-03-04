@@ -1,6 +1,6 @@
 import { decodeBase64, encodeBase64 } from "@std/encoding/base64";
 import {
-  // generateAuthenticationOptions,
+  generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
@@ -10,7 +10,6 @@ import type {
   GenerateRegistrationOptionsOpts,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
-  // VerifiedRegistrationResponse,
 } from "@simplewebauthn/server";
 import type { User } from "../types/webauthn.ts";
 import { config } from "@scope/config";
@@ -63,7 +62,7 @@ export class WebAuthnService {
   ): Promise<PublicKeyCredentialRequestOptionsJSON> {
     const redis = await this.getRedis();
     const existingUser = await redis.getUserByName(userName);
-    let userID: Uint8Array, userUUID:string;
+    let userID: Uint8Array, userUUID: string;
     if (!existingUser) {
       userUUID = crypto.randomUUID();
       userID = uuidToUint8Array(userUUID);
@@ -97,7 +96,6 @@ export class WebAuthnService {
     // Store both challenge and initial user data
     await redis.setChallengeSignUp(options.challenge, userName);
 
-    
     if (!existingUser) {
       // Store initial user data with temporary ID
       const initialUser: User = {
@@ -154,7 +152,7 @@ export class WebAuthnService {
           transports: response.response.transports || ["internal"],
           createdAt: new Date(),
           lastUsed: new Date(),
-        }
+        };
         // Update user with passkey data
         const user: User = {
           ...initialUser,
@@ -176,20 +174,19 @@ export class WebAuthnService {
     { challenge: string; challengeId: string }
   > {
     const redis = await this.getRedis();
-    // Generate random challenge
-    const challengeBuffer = new Uint8Array(32);
-    crypto.getRandomValues(challengeBuffer);
 
-    // Convert to base64url format
-    const challenge = toBase64URLFromUInt8Array(challengeBuffer);
+    const options = await generateAuthenticationOptions({
+      rpID: this.rpID,
+      userVerification: "preferred",
+    });
 
     // Generate UUID for this challenge
     const challengeId = crypto.randomUUID();
 
     // Store in Redis
-    await redis.setChallengeAuth(challengeId, challenge);
+    await redis.setChallengeAuth(challengeId, options.challenge);
 
-    return { challenge, challengeId };
+    return { challenge: options.challenge, challengeId };
   }
 
   static async verifyAuthentication(
@@ -252,33 +249,4 @@ export class WebAuthnService {
     }
     throw new Error("No user found for this credential");
   }
-
-  // static async generateAuthenticationOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
-  //   const redis = await this.getRedis();
-  //   // const user = await redis.getUser(userName);
-  //   // if (!user) {
-  //   //   throw new Error('User not found');
-  //   // }
-
-  //   const options = await generateAuthenticationOptions({
-  //       rpID: this.rpID,
-  //       allowCredentials: user.userPasskeys.map(passKey => ({
-  //         id: passKey.id,
-  //         type: 'public-key',
-  //         transports: passKey.transports,
-  //       })),
-  //       userVerification: 'preferred',
-  //   });
-
-  //   user.currentChallenge = options.challenge;
-  //   await redis.setUser(userName, user);
-
-  //   // Return only necessary options, omitting allowCredentials
-  //   return {
-  //       challenge: options.challenge,
-  //       timeout: options.timeout,
-  //       rpId: options.rpId,
-  //       userVerification: options.userVerification
-  //   };
-  // }
 }
