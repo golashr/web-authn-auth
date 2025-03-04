@@ -7,6 +7,7 @@ A demonstration of passwordless authentication using WebAuthn FIDO2 implementati
 
 - Passwordless authentication using platform authenticators (TouchID, FaceID, Windows Hello)
 - Cross-device passkey support
+- Frictionless sign-in with conditional UI
 - Redis-based user and passkey storage
 - Built with Deno and TypeScript
 
@@ -18,6 +19,7 @@ This proof of concept implements both client and server components:
 - Uses `@simplewebauthn/browser` for WebAuthn operations
 - Handles registration and authentication flows
 - Manages platform authenticator interactions
+- Provides frictionless sign-in experience
 - Communicates with server via REST API
 
 ### Server Implementation
@@ -35,50 +37,58 @@ This proof of concept implements both client and server components:
 4. Passkey is created and stored in platform's secure storage (Keychain/TPM)
 5. Public key is stored in Redis
 
-### Authentication Flow
-1. User enters username
-2. Server provides authentication options
-3. Browser retrieves passkey from platform authenticator
-4. User verifies with biometric
-5. Server validates the authentication
+### Frictionless Sign-In Flow
+1. Browser shows passkey selection UI automatically
+2. User selects their passkey and verifies with biometric
+3. Username is auto-filled from passkey
+4. Server verifies the authentication
+5. User is logged in without additional prompts
 
 ### Security Features
 - Challenge-response authentication
 - Anti-replay protection using counters
 - Resident keys for cross-device support
 - Platform authenticator enforcement
+- Single biometric verification per session
 
 ## Project Structure
 
 ```
 ├── packages/
-│   ├── client/ 
-├── packages/
 │ ├── client/ # Frontend implementation
 │ │ ├── public/
 │ │ │ ├── js/
-│ │ │ │ └── webauthn.js # Client-side WebAuthn operations
-│ │ │ └── index.html # Simple demo UI
-│ │ └── deno.json # Client config
+│ │ │ │ └── webauthn.js # Client-side WebAuthn operations with frictionless sign-in
+│ │ │ └── index.html # Demo UI with passkey support
+│ │ └── deno.json
 │ ├── server/ # Backend implementation
 │ │ ├── src/
 │ │ │ ├── services/
-│ │ │ │ ├── webauthn.ts # WebAuthn service
+│ │ │ │ ├── webauthn.ts # WebAuthn service with passkey management
 │ │ │ │ └── redis.ts # Redis storage service
-│ │ │ ├── types/
-│ │ │ │ └── webauthn.ts # Type definitions for WebAuthn
-│ │ │ ├── routes/ # API endpoints
+│ │ │ ├── routes/
 │ │ │ │ ├── auth/
-│ │ │ │ │ ├── register-options.ts
-│ │ │ │ │ ├── register-verify.ts
-│ │ │ │ │ ├── login-options.ts
-│ │ │ │ │ └── login-verify.ts
-│ │ │ │ └── index.ts
-│ │ │ └── server.ts # Server entry point
-│ │ └── deno.json # Server config
+│ │ │ │ │ ├── register-options.ts # Registration options
+│ │ │ │ │ ├── register-verify.ts # Registration verification
+│ │ │ │ │ ├── login-options.ts # Authentication options
+│ │ │ │ │ ├── login-verify.ts # Authentication verification
+│ │ │ │ │ └── get-username.ts # Username lookup from passkey
+│ │ │ │ └── index.ts # Route configuration
+│ │ │ ├── middleware/
+│ │ │ │ └── cors.ts # CORS configuration for cross-origin auth
+│ │ │ └── server.ts
+│ │ └── deno.json
 │ └── config/ # Shared configuration
-└── deno.json # Root config
-```                   
+│   └── src/
+│     └── index.ts # Environment and WebAuthn settings
+└── deno.json
+```
+
+Key components:
+- `webauthn.js`: Implements conditional UI and frictionless sign-in
+- `get-username.ts`: Handles passkey to username resolution
+- `cors.ts`: Manages cross-origin authentication
+- `index.html`: Provides passkey-enabled login interface
 
 ## Setup
 
