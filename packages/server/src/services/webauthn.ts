@@ -228,4 +228,19 @@ export class WebAuthnService {
       return false;
     }
   }
+
+  static async getUsernameFromCredentialId(credentialId: string): Promise<string> {
+    const redis = await this.getRedis();
+    const users = await redis.getAllUsers();
+    
+    for (const user of users) {
+      const matchingPasskey = user.userPasskeys.find(
+        passkey => passkey.id === credentialId
+      );
+      if (matchingPasskey) {
+        return user.userName;
+      }
+    }
+    throw new Error('No user found for this credential');
+  }
 } 

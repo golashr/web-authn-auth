@@ -1,23 +1,19 @@
 import type { Context } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 
 export async function cors(ctx: Context, next: () => Promise<unknown>) {
-  ctx.response.headers.set("Access-Control-Allow-Origin", "*");
-  ctx.response.headers.set(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
+  // Get the origin from the request
+  const origin = ctx.request.headers.get("Origin") || "http://localhost:8000";
 
-  // Allow credentials if needed
+  // Set CORS headers
+  ctx.response.headers.set("Access-Control-Allow-Origin", origin);
   ctx.response.headers.set("Access-Control-Allow-Credentials", "true");
+  ctx.response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type, Origin");
+  ctx.response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
 
-  ctx.response.headers.set(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-
-   // Handle preflight requests
+  // Handle preflight
   if (ctx.request.method === "OPTIONS") {
-    ctx.response.status = 200;
+    ctx.response.status = 204; // No content
     return;
   }
 
