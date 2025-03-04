@@ -1,11 +1,14 @@
 # WebAuthn Demo with Passkeys
 
-A demonstration of passwordless authentication using WebAuthn FIDO2 implementation with SimpleWebAuthn and passkeys. 
-* FIDO2/WebAuthn is designed for the web
+A demonstration of passwordless authentication using WebAuthn FIDO2
+implementation with SimpleWebAuthn and passkeys.
+
+- FIDO2/WebAuthn is designed for the web
 
 ## Features
 
-- Passwordless authentication using platform authenticators (TouchID, FaceID, Windows Hello)
+- Passwordless authentication using platform authenticators (TouchID, FaceID,
+  Windows Hello)
 - Cross-device passkey support
 - Frictionless sign-in with conditional UI
 - Redis-based user and passkey storage
@@ -17,9 +20,11 @@ This proof of concept implements both client and server components:
 
 ### Client Implementations
 
-This demo provides two different client implementations showcasing different WebAuthn flows:
+This demo provides two different client implementations showcasing different
+WebAuthn flows:
 
 ### Standard Client (`/packages/client`)
+
 - Traditional WebAuthn implementation
 - User manually enters username
 - Single passkey verification prompt
@@ -30,6 +35,7 @@ This demo provides two different client implementations showcasing different Web
   4. Server verifies authentication
 
 ### Auto-fill Client (`/packages/client-auto-fill`)
+
 - Automatic username discovery from passkey
 - More convenient but requires double verification
 - Flow:
@@ -40,24 +46,31 @@ This demo provides two different client implementations showcasing different Web
   5. Server verifies authentication
 
 #### Trade-offs
+
 **Standard Client**
+
 - ✅ Single passkey verification
 - ✅ Cleaner security flow
 - ❌ Manual username entry required
 
 **Auto-fill Client**
+
 - ✅ Automatic username discovery
 - ✅ More convenient user experience
 - ❌ Requires double passkey verification
 - ❌ Additional API call for username lookup
 
-The double verification in the auto-fill client is due to WebAuthn's security model:
+The double verification in the auto-fill client is due to WebAuthn's security
+model:
+
 1. First verification: To securely get username from passkey
 2. Second verification: To authenticate with server's fresh challenge
 
-Choose the appropriate implementation based on your UX vs. verification frequency preferences.
+Choose the appropriate implementation based on your UX vs. verification
+frequency preferences.
 
 ### Server Implementation
+
 - Uses `@simplewebauthn/server` for WebAuthn verification
 - Manages user registration and authentication
 - Stores passkeys and user data in Redis
@@ -66,6 +79,7 @@ Choose the appropriate implementation based on your UX vs. verification frequenc
 ## How It Works
 
 ### Registration Flow
+
 1. User enters username
 2. Server generates registration options
 3. Browser prompts for biometric verification
@@ -73,6 +87,7 @@ Choose the appropriate implementation based on your UX vs. verification frequenc
 5. Public key is stored in Redis
 
 ### Frictionless Sign-In Flow
+
 1. Browser shows passkey selection UI automatically
 2. User selects their passkey and verifies with biometric
 3. Username is auto-filled from passkey
@@ -80,6 +95,7 @@ Choose the appropriate implementation based on your UX vs. verification frequenc
 5. User is logged in without additional prompts
 
 ### Security Features
+
 - Challenge-response authentication
 - Anti-replay protection using counters
 - Resident keys for cross-device support
@@ -131,7 +147,8 @@ Choose the appropriate implementation based on your UX vs. verification frequenc
 
 ## Environment Configuration
 
-For testing on web domains, you need to configure the appropriate origins in your `.env` file:
+For testing on web domains, you need to configure the appropriate origins in
+your `.env` file:
 
 ```bash
 # Backend server
@@ -209,9 +226,10 @@ RP_NAME="WebAuthn Demo"
 - Redis
 - TypeScript
 
-
 What Can You Achieve with SimpleWebAuthn?
 
-- ✅ FIDO2/WebAuthn support – Implement passwordless logins using biometrics, security keys, or device-bound credentials.
-- ✅ Multi-device authentication – Use FIDO2 security keys (YubiKey), mobile biometrics (Face ID, Windows Hello), or built-in authenticators.
+- ✅ FIDO2/WebAuthn support – Implement passwordless logins using biometrics,
+  security keys, or device-bound credentials.
+- ✅ Multi-device authentication – Use FIDO2 security keys (YubiKey), mobile
+  biometrics (Face ID, Windows Hello), or built-in authenticators.
 - ✅ Phishing-resistant MFA – No OTPs, no password reuse issues.

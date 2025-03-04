@@ -4,6 +4,6 @@ import { getItems } from "./items.ts";
 const apiRouter = new Router();
 
 apiRouter
-  .get("/api/items", getItems)
+  .get("/api/items", getItems);
 
 export default apiRouter;

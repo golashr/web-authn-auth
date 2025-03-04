@@ -24,4 +24,4 @@ export const config: Config = {
     host: Deno.env.get("REDIS_HOST") || "localhost",
     port: Number(Deno.env.get("REDIS_PORT")) || 7379,
   },
-}; 
+};

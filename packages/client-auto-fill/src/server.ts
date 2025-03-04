@@ -14,4 +14,4 @@ app.use(async (ctx) => {
 const port = config.clientAutoFillPort;
 const rpId = config.rpId;
 console.log(`Static server running on http://${rpId}:${port}`);
-await app.listen({ port }); 
+await app.listen({ port });

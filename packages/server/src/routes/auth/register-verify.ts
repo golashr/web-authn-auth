@@ -4,20 +4,24 @@ import { WebAuthnService } from "../../services/index.ts";
 
 export async function registerVerify(ctx: Context) {
   const body = await ctx.request.body().value;
-  const { username, response } = body;
+  const { challenge, username, response } = body;
 
   try {
-    const verified = await WebAuthnService.verifyRegistration(username, response);
+    const { verified, userName } = await WebAuthnService.verifyRegistration(
+      challenge,
+      username,
+      response,
+    );
     ctx.response.body = {
       success: true,
-      data: { verified }
-    } as ApiResponse<{ verified: boolean }>;
+      data: { verified, userName },
+    } as ApiResponse<{ verified: boolean; userName: string }>;
   } catch (error) {
     ctx.response.status = 400;
     ctx.response.body = {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      data: null
+      data: null,
     } as ApiResponse<null>;
   }
 }
