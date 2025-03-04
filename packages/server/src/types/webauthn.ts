@@ -18,12 +18,6 @@ export interface Passkey {
   // The public key in CBOR format, encoded as Base64URLString
   publicKey: Base64URLString;
   
-  // Reference to the user this passkey belongs to
-  // user: UserModel;
-  
-  // WebAuthn user ID (different from our internal user ID)
-  // webauthnUserID: Base64URLString;
-  
   // Anti-replay counter
   counter: number;
   

@@ -3,7 +3,8 @@
     "dev": "deno run --env-file -A --watch packages/server/src/server.ts",
     "compile:server": "deno compile --env-file -A packages/server/src/server.ts",
     "compile:client": "deno compile --env-file -A packages/client/src/server.ts",
-    "compile": "deno task compile:server && deno task compile:client"
+    "compile:client-auto-fill": "deno compile --env-file -A packages/client-auto-fill/src/server.ts",
+    "compile": "deno task compile:server && deno task compile:client && deno task compile:client-auto-fill"
   },
   "imports": {
     "@redis/client": "npm:@redis/client@1.5.14",

@@ -2,6 +2,41 @@ import { startRegistration, startAuthentication } from 'https://cdn.skypack.dev/
 
 const serverOrigin = 'http://localhost:3126';
 
+async function checkExistingPasskeys() {
+    try {
+        const mediation = await PublicKeyCredential.isConditionalMediationAvailable();
+        if (mediation) {
+            // First get passKey from browser
+            const passKey = await navigator.credentials.get({
+                mediation: 'optional',
+                publicKey: {
+                    challenge: new Uint8Array(32),
+                    rpId: window.location.hostname,
+                    allowCredentials: [], // Empty for discoverable passKey
+                    userVerification: 'preferred',
+                }
+            });
+
+            if (passKey) {
+                console.log('PassKey:', JSON.stringify(passKey, null, 2));
+                const passkeyId = passKey.id;
+                
+                const response = await fetch(`${serverOrigin}/auth/get-username`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ passkeyId })
+                });
+                const options = await response.json();
+                document.getElementById("username").value = options.data.username;
+                return options.data.username
+            }
+        }
+    } catch (error) {
+        console.log('No passkeys available or user declined');
+    }
+}
+
 async function register() {
     try {
         const username = document.getElementById('username').value.trim();
@@ -49,7 +84,7 @@ async function register() {
 
 async function login() {
     try {
-        const username = document.getElementById('username').value.trim();
+        const username = await checkExistingPasskeys()  
         if (!username) {
             alert('Please enter a username');
             return;
@@ -63,7 +98,6 @@ async function login() {
             credentials: 'include'
         });
         const options = await optionsRes.json();
-
         // Regular flow with UI prompt
         const authenticationResponse = await startAuthentication({ optionsJSON: options.data });
 

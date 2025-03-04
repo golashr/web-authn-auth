@@ -1,0 +1,11 @@
+{
+  "name": "@scope/client-auto-fill",
+  "exports": "./src/server.ts",
+  "tasks": {
+    "dev": "deno run --allow-env --allow-net --allow-read --watch src/server.ts"
+  },
+  "imports": {
+    "@std/": "jsr:@std/",
+    "@scope/config": "../config/src/index.ts"
+  }
+} 
